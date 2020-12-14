@@ -32,6 +32,8 @@ getAppartment([H|T],R):-
     getAppartment(T,R2),
     append(R1,R2,R).
 
+
+% ---------------------------------- Disjoint / Adj ----------------------------------
 % disjoint(+Rectangle, +Rectangle)
 disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]):-
     %Rect A
@@ -75,6 +77,10 @@ adjacent([_, O1], [_, O2]):-
     % the two rectangles are not overlapping 
     disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]).
 
+
+
+% ---------------------------------- Apartment Constraints ----------------------------------
+% -------------------
 % checks that every room has at least on adjacent room in the apartment 
 %  input: apartment => [rooms]
 consistentRooms(A):-
@@ -96,11 +102,19 @@ hasAdj(R, [H|_]):-
     adjacent(R, H).
 hasAdj(R, [_|T]):-
     hasAdj(R, T).
-    
+
 belongsTo(R, [R|_]).
 belongsTo(R, [_|T]):-
     belongsTo(R, T).
+% -------------------
 
+% ---------------------------------- Floor Constraints ----------------------------------
+% apartments don't overlap 
+consistentApartments([H|T]):-
+    consistentRooms(H),
+    consistentApartments(T).
+
+% --------------------------------------------------------------------------------------------
 
 %% output: [[(type,x,y,w,l),..],apartment2 ...,stairs,elev,hallwayslist]
 % (x, y) are cartesian coordinates where x is the the horizontal axis, y is the vertical one. (0,0) represents the top left corner of the floor
