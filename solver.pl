@@ -1,5 +1,11 @@
 :-use_module(library(clpfd)).
 
+% -----------------------------------------------------------
+% Conventions:
+%   -Cartesian coordinates
+%   - X & width ==> horizontal , Y & legth ==> vertical       
+%   -(x, y) represents top left corner of the floor || room || ... etc
+% -----------------------------------------------------------
 
 %%% floorwidth, floorlength, [n,e,w,s] (open-area..etc), app count
 %%% 1 apartment type: [#,[#,[(type,minarea,w,l,assigned)]]]
@@ -27,36 +33,94 @@ getAppartment([H|T],R):-
     append(R1,R2,R).
 
 
+% ---------------------------------- Disjoint / Adj ----------------------------------
+% disjoint(+Rectangle, +Rectangle)
+disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]):-
+    %Rect A
+    % (XA1, YA1) ....................
+    % ...............................
+    % .................... (XA2, YA2)
+    %Rect B
+    % (XB1, YB1) ....................
+    % ...............................
+    % .................... (XB2, YB2)
+
+    XA1 #= X1,
+    XA2 #= X1+W1,
+    YA1 #= Y1,
+    YA2 #= Y1+L1,
+    
+    XB1 #= X2,
+    XB2 #= X2+W2,
+    YB1 #= Y2,
+    YB2 #= Y2+L2,
+
+    XB1 #>= XA2 #\/ XA1 #>= XB2 #\/
+    YB1 #>= YA2 #\/ YA1 #>= YB2.
+
+
+% check if two rooms are adjacent but not overlapping
 adjacent([_, O1], [_, O2]):-
     O1 = [X1, Y1, W1, L1|_],
-    O2 = [X2, Y2, _, _|_],
-    X1#=<X2,
-    Y2#=Y1+W1,
-    X2#=<X1 + L1.
+    O2 = [X2, Y2, W2, L2|_],
+    
+    % there exist an x that belongs to rect 1 and rect 2
+    X1#=< X,
+    X#=< X1+W1,
+    X2#=< X,
+    X#=< X2+W2,
+    % there exist a y that belongs to rect 1 and rect 2
+    Y1#=< Y,
+    Y#=< Y1+L1,
+    Y2#=< Y,
+    Y#=< Y2+L2,
+    % the two rectangles are not overlapping 
+    disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]).
 
-adjacent([_, O1], [_, O2]):-
-    O1 = [X1, Y1, _, _|_],
-    O2 = [X2, Y2, _, L2|_],
-    X2#=<X1,
-    Y2#=Y1+W1,
-    X1#=<X2 + L2.
 
-adjacent([_, O1], [_, O2]):-
-    O1 = [X1, Y1, W1, L1|_],
-    O2 = [X2, Y2, _, _|_],
-    Y1#=<Y2,
-    X1=X2,
-    Y2#=<Y1 + W1.
 
-adjacent([_, O1], [_, O2]):-
-    O1 = [X1, Y1, _, _|_],
-    O2 = [X2, Y2, W2, _|_],
-    Y2#=<Y1,
-    X1=X2,
-    Y1#=<Y2 + W2.
+% ---------------------------------- Apartment Constraints ----------------------------------
+% -------------------
+% checks that every room has at least on adjacent room in the apartment 
+%  input: apartment => [rooms]
+consistentRooms(A):-
+    consistentRoomsHelper(A, A).
 
+% helper takes rooms one by one and compares against the rest to find adjacent room (a room is not adjacent to itself)
+consistentRoomsHelper([], _).
+consistentRoomsHelper([H|T], L):-
+    % check if every room has adj 
+    % hasAdj(H, L),
+    % consistentRoomsHelper(T, L).
+    
+    % check if there is a room adj to this one
+    belongsTo(R, L), 
+    adjacent(H, R),
+    consistentRoomsHelper(T, L).
+    
+hasAdj(R, [H|_]):-
+    adjacent(R, H).
+hasAdj(R, [_|T]):-
+    hasAdj(R, T).
+
+belongsTo(R, [R|_]).
+belongsTo(R, [_|T]):-
+    belongsTo(R, T).
+% -------------------
+
+% ---------------------------------- Floor Constraints ----------------------------------
+% each apartment contains rooms belonging to the apartment
+consistentApartments([]).
+consistentApartments([H|T]):-
+    consistentRooms(H),
+    consistentApartments(T).
+
+% apartments don't overlap 
+
+% --------------------------------------------------------------------------------------------
 
 %% output: [[(type,x,y,w,l),..],apartment2 ...,stairs,elev,hallwayslist]
+% (x, y) are cartesian coordinates where x is the the horizontal axis, y is the vertical one. (0,0) represents the top left corner of the floor
 solve(F,A,R):-
     F=[Width,Length,[North,East,South,West]],
     A=[[2,[5,[R1,R2,R3,R4,R5]]]],
