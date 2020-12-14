@@ -109,10 +109,13 @@ belongsTo(R, [_|T]):-
 % -------------------
 
 % ---------------------------------- Floor Constraints ----------------------------------
-% apartments don't overlap 
+% each apartment contains rooms belonging to the apartment
+consistentApartments([]).
 consistentApartments([H|T]):-
     consistentRooms(H),
     consistentApartments(T).
+
+% apartments don't overlap 
 
 % --------------------------------------------------------------------------------------------
 
