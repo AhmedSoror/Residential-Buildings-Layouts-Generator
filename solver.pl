@@ -43,7 +43,6 @@ disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]):-
     % ...............................
     % .................... (XB2, YB2)
 
-
     XA1 #= X1,
     XA2 #= X1+W1,
     YA1 #= Y1,
@@ -56,6 +55,7 @@ disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]):-
 
     XB1 #>= XA2 #\/ XA1 #>= XB2 #\/
     YB1 #>= YA2 #\/ YA1 #>= YB2.
+
 
 % check if two rooms are adjacent but not overlapping
 adjacent([_, O1], [_, O2]):-
@@ -75,8 +75,31 @@ adjacent([_, O1], [_, O2]):-
     % the two rectangles are not overlapping 
     disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]).
 
+% checks that every room has at least on adjacent room in the apartment 
+%  input: apartment => [rooms]
+consistentRooms(A):-
+    consistentRoomsHelper(A, A).
 
- 
+% helper takes rooms one by one and compares against the rest to find adjacent room (a room is not adjacent to itself)
+consistentRoomsHelper([], _).
+consistentRoomsHelper([H|T], L):-
+    % check if every room has adj 
+    % hasAdj(H, L),
+    % consistentRoomsHelper(T, L).
+    
+    % check if there is a room adj to this one
+    belongsTo(R, L), 
+    adjacent(H, R),
+    consistentRoomsHelper(T, L).
+    
+hasAdj(R, [H|_]):-
+    adjacent(R, H).
+hasAdj(R, [_|T]):-
+    hasAdj(R, T).
+    
+belongsTo(R, [R|_]).
+belongsTo(R, [_|T]):-
+    belongsTo(R, T).
 
 
 %% output: [[(type,x,y,w,l),..],apartment2 ...,stairs,elev,hallwayslist]
