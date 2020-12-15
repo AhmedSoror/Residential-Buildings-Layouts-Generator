@@ -36,8 +36,8 @@ getAppartment([H|T],R):-
 % ---------------------------------- Disjoint / Adj ----------------------------------
 % check if two rooms are adjacent but not overlapping
 adjacent([_, O1], [_, O2]):-
-    O1 = [X1, Y1, W1, H1|_],
-    O2 = [X2, Y2, W2, H2|_],
+    O1 = [X1, W1, Y1, H1|_],
+    O2 = [X2, W2, Y2, H2|_],
     
     % there exist an x that belongs to rect 1 and rect 2
     X1#=< X,
