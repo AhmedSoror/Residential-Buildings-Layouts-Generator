@@ -19,6 +19,7 @@ getAppartmentsNTimes(N,Types,R):-
     getAppartmentsNTimes(N1,Types,R2),
     append([R1],R2,R).
 
+
 getRooms([],[]).
 getRooms([H|T],R):-
     R1=[H,[_,_,_,_]],
@@ -48,10 +49,9 @@ adjacent([_, O1], [_, O2]):-
     Y1#=< Y,
     Y#=< Y1+H1,
     Y2#=< Y,
-    Y#=< Y2+H2,
+    Y#=< Y2+H2.
     % the two rectangles are not overlapping 
-    % disjoint([X1,Y1,W1,H1],[X2,Y2,W2,H2]).
-    disjoint2([rect(X1,W1, Y1,H1), rect(X2,W2,Y2,H2)]).
+    % disjoint2([rect(X1,W1, Y1,H1), rect(X2,W2,Y2,H2)]).
 
 
 
