@@ -34,35 +34,10 @@ getAppartment([H|T],R):-
 
 
 % ---------------------------------- Disjoint / Adj ----------------------------------
-% disjoint(+Rectangle, +Rectangle)
-disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]):-
-    %Rect A
-    % (XA1, YA1) ....................
-    % ...............................
-    % .................... (XA2, YA2)
-    %Rect B
-    % (XB1, YB1) ....................
-    % ...............................
-    % .................... (XB2, YB2)
-
-    XA1 #= X1,
-    XA2 #= X1+W1,
-    YA1 #= Y1,
-    YA2 #= Y1+L1,
-    
-    XB1 #= X2,
-    XB2 #= X2+W2,
-    YB1 #= Y2,
-    YB2 #= Y2+L2,
-
-    XB1 #>= XA2 #\/ XA1 #>= XB2 #\/
-    YB1 #>= YA2 #\/ YA1 #>= YB2.
-
-
 % check if two rooms are adjacent but not overlapping
 adjacent([_, O1], [_, O2]):-
-    O1 = [X1, Y1, W1, L1|_],
-    O2 = [X2, Y2, W2, L2|_],
+    O1 = [X1, Y1, W1, H1|_],
+    O2 = [X2, Y2, W2, H2|_],
     
     % there exist an x that belongs to rect 1 and rect 2
     X1#=< X,
@@ -71,11 +46,12 @@ adjacent([_, O1], [_, O2]):-
     X#=< X2+W2,
     % there exist a y that belongs to rect 1 and rect 2
     Y1#=< Y,
-    Y#=< Y1+L1,
+    Y#=< Y1+H1,
     Y2#=< Y,
-    Y#=< Y2+L2,
+    Y#=< Y2+H2,
     % the two rectangles are not overlapping 
-    disjoint([X1,Y1,W1,L1],[X2,Y2,W2,L2]).
+    % disjoint([X1,Y1,W1,H1],[X2,Y2,W2,H2]).
+    disjoint2([rect(X1,W1, Y1,H1), rect(X2,W2,Y2,H2)]).
 
 
 
