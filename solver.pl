@@ -8,7 +8,8 @@
 % -----------------------------------------------------------
 
 %%% floorwidth, floorlength, [n,e,w,s] (open-area..etc), app count
-%%% 1 apartment type: [#,[#,[(type,minarea,w,l,assigned)]]]
+%%% 1 apartment type: [#,[#,[[type,minarea,w,h,assigned]]]]
+%  Room = [ [type,minarea,w,h,assigned] , [X, W, Y, H]  ]
 %%% soft cons leave for now
 %%% global const ,, ,,  ,,
 getAppartmentsNTimes(0,_,[]).
@@ -19,6 +20,32 @@ getAppartmentsNTimes(N,Types,R):-
     getAppartmentsNTimes(N1,Types,R2),
     append([R1],R2,R).
 
+getRects([],[], [], []).
+getRects([Apartment1|T], R, VarsX, VarsY):-
+    getRectRooms(Apartment1, R1, VarsX1, VarsY1),
+    getRects(T, R2, VarsX2, VarsY2),
+    append(R1, R2, R),
+    append(VarsX1, VarsX2, VarsX),
+    append(VarsY1, VarsY2, VarsY).
+
+getRectRooms([],[], [], []).
+getRectRooms([Room1|T],R, VarsX, VarsY):-
+    Room1=[[_,MinArea,W1,H1,_] ,[X1, W1, Y1, H1|_]],
+    R1 = rect(X1, W1, Y1, H1),
+    X2 #= X1+W1,
+    X2#>X1,
+    Y2 #= Y1+H1,
+    Y2#>Y1,
+    Area #= W1 * H1,
+    Area #>= MinArea,
+    CoordinatesX=[X1, X2],
+    CoordinatesY=[Y1, Y2],
+    getRectRooms(T,R2, VarsX2, VarsY2),
+
+    append(CoordinatesX, VarsX2, VarsX),
+    append(CoordinatesY, VarsY2, VarsY),    
+    append([R1],R2,R).
+
 
 getRooms([],[]).
 getRooms([H|T],R):-
@@ -26,11 +53,11 @@ getRooms([H|T],R):-
     getRooms(T,R2),
     append([R1],R2,R).
     
-getAppartment([],[]).
-getAppartment([H|T],R):-
+getAppartments([],[]).
+getAppartments([H|T],R):-
     H=[Num,[_,Types]],
     getAppartmentsNTimes(Num,Types,R1),
-    getAppartment(T,R2),
+    getAppartments(T,R2),
     append(R1,R2,R).
 
 
@@ -98,12 +125,26 @@ consistentApartments([H|T]):-
 %% output: [[(type,x,y,w,l),..],apartment2 ...,stairs,elev,hallwayslist]
 % (x, y) are cartesian coordinates where x is the the horizontal axis, y is the vertical one. (0,0) represents the top left corner of the floor
 solve(F,A,R):-
-    F=[Width,Length,[North,East,South,West]],
+    F=[Width,Height,[North,East,South,West]],
     A=[[2,[5,[R1,R2,R3,R4,R5]]]],
     NUM_AP=2,
     %length(R, NUM_AP),
-    getAppartment(A,R).
+    getAppartments(A,R),
+    getRects(R, Rects, VarsX, VarsY),
+    % constraints: 
+    % domain
+    VarsX ins 0.. Width,
+    VarsY ins 0.. Height,
+    % consistent Apartments where rooms in the same apartment are adjacent
+    consistentApartments(R),
+    % non overlapping
+    disjoint2(Rects),
+    % print(Rects),
+    append(VarsX, VarsY, Vars),
+    labeling([], Vars).
+    
 
+    
 
     
 
