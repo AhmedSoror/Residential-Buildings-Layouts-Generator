@@ -19,14 +19,7 @@ getAppartmentsNTimes(N,Types,R):-
     N1 #= N-1,
     getAppartmentsNTimes(N1,Types,R2),
     append([R1],R2,R).
-
-getAppartmentsNTimes2(0,_,[]).
-getAppartmentsNTimes2(N,Types,R):-
-    N#>0,
-    getRooms(Types,R1),
-    length(R, N),
-    maplist(=(R1), R).
-    
+  
 
 getRooms([],[]).
 getRooms([H|T],R):-
