@@ -47,7 +47,7 @@ getAppartments([H|T],R):-
 % -------------------
 
 getRects([],[], [], []).
-getRects([[HallwaysCount|Apartment1]|T], R, VarsX, VarsY):-
+getRects([[_|Apartment1]|T], R, VarsX, VarsY):-
     getRectRooms(Apartment1, R1, VarsX1, VarsY1),
     getRects(T, R2, VarsX2, VarsY2),
     append(R1, R2, R),
@@ -75,10 +75,10 @@ getRectRooms([Room1|T],R, VarsX, VarsY):-
 % ---------------------------------- Disjoint / Adj ----------------------------------
 % check if two rooms are adjacent but not overlapping
 adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
-    X2#=X1+W1 #==> Y1#< Y2+H2 #/\ Y2#< Y1+H1, 
-    X2#=X1-W2 #==> Y1#< Y2+H2 #/\ Y2#< Y1+H1,
-    Y2#=Y1+H1 #==> X1#< X2+W2 #/\ X2#< X1+W1,
-    Y2#=Y1-H2 #==> X1#< X2+W2 #/\ X2#< X1+W1,
+    X2#=X1+W1 #==> (Y1#< Y2+H2 #/\ Y2#< Y1+H1), 
+    X2#=X1-W2 #==> (Y1#< Y2+H2 #/\ Y2#< Y1+H1),
+    Y2#=Y1+H1 #==> (X1#< X2+W2 #/\ X2#< X1+W1),
+    Y2#=Y1-H2 #==> (X1#< X2+W2 #/\ X2#< X1+W1),
     X1#=X2 #==> Y1#\=Y2,
     Y1#=Y2 #==> X1#\=X2,
     % there exist an x that belongs to rect 1 and rect 2
@@ -95,21 +95,31 @@ adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
 
 
 % ---------------------------------- Apartment Constraints ----------------------------------
-getHallway(Ap,Hallway):-
-    Hallway = [[hallway|_],_],
-    belongsTo(Hallway, L).
+% getHallway(Ap,Hallway):-
+%     Hallway = [[hallway|_],_],
+%     belongsTo(Hallway, Ap).
+
+getHallways([],R,R).
+getHallways([H|T],Acc,R):-
+    H=[[hallway|_],_],
+    append(Acc,[H],Acc1),
+    getHallways(T,Acc1,R).
+getHallways([H|T],Acc,R):-
+    H\=[[hallway|_],_],
+    getHallways(T,Acc,R).
+    
 % -------------------
 % checks that every room has at least on adjacent room in the apartment 
 %  input: apartment => [rooms]
 consistentRooms([HallwaysCount|A]):-
     HallwaysCount#>1,
-    consistentRoomsHelper(HallwaysCount,A, A).
+    getHallways(A,[],Hallways),
+    consistentRoomsHelper(HallwaysCount,A, Hallways).
 
 consistentRooms([1|A]):-
-
-    getHallway(A,Hallway),
-    % print("ASDADDADSAD"+Hallway),nl,
-    consistentRoomsHelper(1,A, [Hallway]).
+    delete(A, [[hallway|_],_], AwithoutHallways),
+    getHallways(A,[],Hallways),
+    consistentRoomsHelper(1,AwithoutHallways, Hallways).
 
 % helper takes rooms one by one and compares against the rest to find adjacent room (a room is not adjacent to itself)
 consistentRoomsHelper(_,[], _).
@@ -117,9 +127,11 @@ consistentRoomsHelper(_,[], _).
 consistentRoomsHelper(HallwaysCount,[H|T], L):-
     % check if every room has adj 
     % check if there is a room adj to this one
-    getHallway(L,Hallway),
+    belongsTo(Hallway,L),
+    print(Hallway),nl,
+    print(H),nl,
     adjacent(H, Hallway),
-    print("COMAPRING"+ H +"  "+ Hallway +" ===>"+F),nl,
+    % print("COMAPRING"+ H +"  "+ Hallway +" ===>"+F),nl,
     consistentRoomsHelper(HallwaysCount,T, L).
     
 hasAdj(R, [H|_]):-
@@ -148,11 +160,11 @@ consistentApartments([H|T]):-
 solve(F,A,R):-
     statistics(runtime, [Start|_]),
     F=[Width,Height,[North,East,South,West]],
-    A=[[2,[5,[R1,R2,R3]]]],
-    NUM_AP=2,
+    % A=[[2,[5,[R1,R2,R3]]]],
     %length(R, NUM_AP),
 
     getAppartments(A,R),
+    % print(R),
     getRects(R, Rects, VarsX, VarsY),
     % constraints: 
     % domain
