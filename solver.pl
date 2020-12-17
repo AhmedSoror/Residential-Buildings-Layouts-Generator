@@ -7,7 +7,7 @@
 %   -(x, y) represents top left corner of the floor || room || ... etc
 % -----------------------------------------------------------
 
-%%% floorwidth, floorlength, [n,e,w,s] (open-area..etc), app count
+%%% floorwidth, floorlength, [n,w,s,e] (open-area..etc), app count     0(closed),1(open),2(landscape)
 %%% 1 apartment type: [#,[#,[[type,minarea,w,h,assigned]]]]
 %  Room = [ [type,minarea,w,h,assigned] , [X, W, Y, H]  ]
 %%% soft cons leave for now
@@ -92,12 +92,90 @@ adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
     Y2#=< Y,
     Y#=< Y2+H2.
 
+%----------------------------------- sunRoomConstraint(Sides,R),-----------------------------
+sunRoomConstraintHelper([FloorWidth,FloorHeight,[North,West,South,East]],[_,[X,W,Y,H]]):-
+    X2 #= X+W,
+    Y2 #= Y+H,
+    (X#=0 #/\ West#>0) #\/ (Y#=0 #/\ North#>0) #\/ (X2#=FloorWidth #/\ East#>0) #\/ (Y2#=FloorHeight #/\ South#>0).
+
+diningRoomConstraintHelper(DiningRoom,Kitchens):-
+    belongsTo(Kitchen,Kitchens),
+    adjacent(DiningRoom,Kitchen).
+
+bathkitchenRoomConstraintHelper(H,Ducts):-          %H is either kitchen or bathroom
+    belongsTo(Duct,Ducts),
+    adjacent(H,Duct).
+
+roomConstraint(_,[],_).
+
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[diningroom|_],_],
+    getKitchens(Apartment,[],Kitchens),
+    diningRoomConstraintHelper(H,Kitchens),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[bathroom|_],_],
+    getDucts(Apartment,[],Ducts),
+    bathkitchenRoomConstraintHelper(H,Ducts),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[kitchen|_],_],
+    getDucts(Apartment,[],Ducts),
+    bathkitchenRoomConstraintHelper(H,Ducts),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[sunroom|_],_],
+    sunRoomConstraintHelper(Floor,H),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[_,_,_,_,Assigned],_],
+    Assigned \= none,
+    getAssigned(Assigned,Apartment,[],[AssignedRoom]),
+    adjacent(H,AssignedRoom),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H\=[[sunroom|_],_],
+    roomConstraint(Floor,T,Appartment).
 
 
 % ---------------------------------- Apartment Constraints ----------------------------------
 % getHallway(Ap,Hallway):-
 %     Hallway = [[hallway|_],_],
 %     belongsTo(Hallway, Ap).
+
+getAssigned(_,[],R,R).
+getAssigned(Assigned,[H|T],Acc,R):-
+    H=[[Assigned|_],_],
+    append(Acc,[H],Acc1),
+    getAssigned(Assigned,[],Acc1,R).
+getAssigned(Assigned,[H|T],Acc,R):-
+    H\=[[Assigned|_],_],
+    getAssigned(Assigned,T,Acc,R).
+
+getKitchens([],R,R).
+getKitchens([H|T],Acc,R):-
+    H=[[kitchen|_],_],
+    append(Acc,[H],Acc1),
+    getKitchens(T,Acc1,R).
+getKitchens([H|T],Acc,R):-
+    H\=[[kitchen|_],_],
+    getKitchens(T,Acc,R).
+    
+getDucts([],R,R).
+getDucts([H|T],Acc,R):-
+    H=[[duct|_],_],
+    append(Acc,[H],Acc1),
+    getDucts(T,Acc1,R).
+getDucts([H|T],Acc,R):-
+    H\=[[duct|_],_],
+    getDucts(T,Acc,R).
+
 
 getHallways([],R,R).
 getHallways([H|T],Acc,R):-
@@ -125,13 +203,9 @@ consistentRooms([1|A]):-
 consistentRoomsHelper(_,[], _).
 
 consistentRoomsHelper(HallwaysCount,[H|T], L):-
-    % check if every room has adj 
     % check if there is a room adj to this one
     belongsTo(Hallway,L),
-    print(Hallway),nl,
-    print(H),nl,
     adjacent(H, Hallway),
-    % print("COMAPRING"+ H +"  "+ Hallway +" ===>"+F),nl,
     consistentRoomsHelper(HallwaysCount,T, L).
     
 hasAdj(R, [H|_]):-
@@ -146,10 +220,11 @@ belongsTo(R, [_|T]):-
 
 % ---------------------------------- Floor Constraints ----------------------------------
 % each apartment contains rooms belonging to the apartment
-consistentApartments([]).
-consistentApartments([H|T]):-
+consistentApartments(_,[]).
+consistentApartments(Floor,[H|T]):-
     consistentRooms(H),
-    consistentApartments(T).
+    sunRoomConstraint(Floor,H),
+    consistentApartments(Floor,T).
 
 % apartments don't overlap 
 
@@ -159,19 +234,21 @@ consistentApartments([H|T]):-
 % (x, y) are cartesian coordinates where x is the the horizontal axis, y is the vertical one. (0,0) represents the top left corner of the floor
 solve(F,A,R):-
     statistics(runtime, [Start|_]),
-    F=[Width,Height,[North,East,South,West]],
+    F=[Width,Height,Sides],
     % A=[[2,[5,[R1,R2,R3]]]],
     %length(R, NUM_AP),
 
     getAppartments(A,R),
-    % print(R),
     getRects(R, Rects, VarsX, VarsY),
     % constraints: 
+    %SunRoooms
+    % sunRoomConstraint(F,R),
+
     % domain
     VarsX ins 0.. Width,
     VarsY ins 0.. Height,
     % consistent Apartments where rooms in the same apartment are adjacent
-    consistentApartments(R),
+    consistentApartments(F,R),
     % non overlapping
     disjoint2(Rects),
     append(VarsX, VarsY, Vars),
