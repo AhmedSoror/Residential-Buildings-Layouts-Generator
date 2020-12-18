@@ -46,17 +46,18 @@ getAppartments([H|T],R):-
 
 % -------------------
 
-getRects([],[], [], []).
-getRects([[_|Apartment1]|T], R, VarsX, VarsY):-
-    getRectRooms(Apartment1, R1, VarsX1, VarsY1),
-    getRects(T, R2, VarsX2, VarsY2),
+getRects([],[], [], [], 0).
+getRects([[_|Apartment1]|T], R, VarsX, VarsY, UsedFloorArea):-
+    getRectRooms(Apartment1, R1, VarsX1, VarsY1, Apartment1Area),
+    getRects(T, R2, VarsX2, VarsY2, UsedFloorArea2),
     append(R1, R2, R),
     append(VarsX1, VarsX2, VarsX),
-    append(VarsY1, VarsY2, VarsY).
+    append(VarsY1, VarsY2, VarsY),
+    UsedFloorArea #= Apartment1Area+UsedFloorArea2.
 
 
-getRectRooms([],[], [], []).
-getRectRooms([Room1|T],R, VarsX, VarsY):-
+getRectRooms([],[], [], [], 0).
+getRectRooms([Room1|T],R, VarsX, VarsY, TotalApartmentArea):-
     Room1=[[_,MinArea,W1,H1,_] ,[X1, W1, Y1, H1|_]],
     R1 = rect(X1, W1, Y1, H1),
     X2 #= X1+W1,
@@ -67,11 +68,12 @@ getRectRooms([Room1|T],R, VarsX, VarsY):-
     Area #>= MinArea,
     CoordinatesX=[X1, X2],
     CoordinatesY=[Y1, Y2],
-    getRectRooms(T,R2, VarsX2, VarsY2),
+    getRectRooms(T,R2, VarsX2, VarsY2, TotalApartmentArea2),
 
     append(CoordinatesX, VarsX2, VarsX),
     append(CoordinatesY, VarsY2, VarsY),    
-    append([R1],R2,R).
+    append([R1],R2,R),
+    TotalApartmentArea #= Area+TotalApartmentArea2.
 % ---------------------------------- Disjoint / Adj ----------------------------------
 % check if two rooms are adjacent but not overlapping
 adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
@@ -253,7 +255,7 @@ solve(F,A,R):-
     %length(R, NUM_AP),
 
     getAppartments(A,R),
-    getRects(R, Rects, VarsX, VarsY),
+    getRects(R, Rects, VarsX, VarsY, TotalUsedArea),
     % constraints: 
     %SunRoooms
     % sunRoomConstraint(F,R),
@@ -266,7 +268,7 @@ solve(F,A,R):-
     % non overlapping
     disjoint2(Rects),
     append(VarsX, VarsY, Vars),
-    labeling([], Vars),
+    labeling([ffc, max(TotalUsedArea)], Vars),
     statistics(runtime, [Stop|_]),
     Runtime is Stop - Start,
     print("Runtime"+Runtime).
