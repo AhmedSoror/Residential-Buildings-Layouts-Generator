@@ -105,25 +105,37 @@ diningRoomConstraintHelper(DiningRoom,Kitchens):-
 bathkitchenRoomConstraintHelper(H,Ducts):-          %H is either kitchen or bathroom
     belongsTo(Duct,Ducts),
     adjacent(H,Duct).
+    
 
 roomConstraint(_,[],_).
 
 
 roomConstraint(Floor,[H|T],Appartment):-
     H=[[diningroom|_],_],
-    getKitchens(Apartment,[],Kitchens),
+    getKitchens(Appartment,[],Kitchens),
     diningRoomConstraintHelper(H,Kitchens),
     roomConstraint(Floor,T,Appartment).
 
 roomConstraint(Floor,[H|T],Appartment):-
-    H=[[bathroom|_],_],
-    getDucts(Apartment,[],Ducts),
+    H=[[bathroom,_,_,_,Assigned],_],
+    Assigned = none,
+    getDucts(Appartment,[],Ducts),
+    bathkitchenRoomConstraintHelper(H,Ducts),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[bathroom,_,_,_,Assigned],_],
+    Assigned \= none,
+    getAssigned(Assigned,Appartment,[],[AssignedRoom]),
+    adjacent(H,AssignedRoom),
+    % check for ducts
+    getDucts(Appartment,[],Ducts),
     bathkitchenRoomConstraintHelper(H,Ducts),
     roomConstraint(Floor,T,Appartment).
 
 roomConstraint(Floor,[H|T],Appartment):-
     H=[[kitchen|_],_],
-    getDucts(Apartment,[],Ducts),
+    getDucts(Appartment,[],Ducts),
     bathkitchenRoomConstraintHelper(H,Ducts),
     roomConstraint(Floor,T,Appartment).
 
@@ -135,7 +147,7 @@ roomConstraint(Floor,[H|T],Appartment):-
 roomConstraint(Floor,[H|T],Appartment):-
     H=[[_,_,_,_,Assigned],_],
     Assigned \= none,
-    getAssigned(Assigned,Apartment,[],[AssignedRoom]),
+    getAssigned(Assigned,Appartment,[],[AssignedRoom]),
     adjacent(H,AssignedRoom),
     roomConstraint(Floor,T,Appartment).
 
@@ -144,7 +156,7 @@ roomConstraint(Floor,[H|T],Appartment):-
     roomConstraint(Floor,T,Appartment).
 
 
-% ---------------------------------- Apartment Constraints ----------------------------------
+% ---------------------------------- Appartment Constraints ----------------------------------
 % getHallway(Ap,Hallway):-
 %     Hallway = [[hallway|_],_],
 %     belongsTo(Hallway, Ap).
@@ -191,11 +203,13 @@ getHallways([H|T],Acc,R):-
 %  input: apartment => [rooms]
 consistentRooms([HallwaysCount|A]):-
     HallwaysCount#>1,
-    getHallways(A,[],Hallways),
-    consistentRoomsHelper(HallwaysCount,A, Hallways).
+    delete(A,[[duct|_],_],AWithoutDucts),
+    getHallways(AWithoutDucts,[],Hallways),
+    consistentRoomsHelper(HallwaysCount,AWithoutDucts, Hallways).
 
 consistentRooms([1|A]):-
-    delete(A, [[hallway|_],_], AwithoutHallways),
+    delete(A,[[duct|_],_],AWithoutDucts),
+    delete(AWithoutDucts, [[hallway|_],_], AwithoutHallways),
     getHallways(A,[],Hallways),
     consistentRoomsHelper(1,AwithoutHallways, Hallways).
 
@@ -223,7 +237,7 @@ belongsTo(R, [_|T]):-
 consistentApartments(_,[]).
 consistentApartments(Floor,[H|T]):-
     consistentRooms(H),
-    sunRoomConstraint(Floor,H),
+    roomConstraint(Floor,H,H),
     consistentApartments(Floor,T).
 
 % apartments don't overlap 
