@@ -3,7 +3,8 @@ solve(F,A,R):-
 solve([5,6,[0,0,2,1]],[[2,[5,[[bedroom,3,1,_,_],[bedroom1,3,1,_,_],[bedroom2,3,1,_,_],[bedroom3,3,1,_,_],[bedroom4,3,1,_,_]]]]], R).
 solve([5,6,[0,0,2,1]],[[2,[5,[[hallway,3,1,_,_],[bedroom1,3,1,_,_],[bedroom2,3,1,_,_]]]]], R).
 solve([7,9,[0,0,0,1]],[[1,[5,[[duct,1,1,1,none],[duct,1,1,1,none],[bedroom1,3,1,_,none],[bathroom,3,1,_,bedroom1],[kitchen,3,1,_,none],[dressingroom,3,1,_,bedroom1],[hallway,3,_,1,none],[sunroom,3,1,_,none]]]]], R).
-  
+
+solve([7,9,[0,0,0,1]],[[1,[5,[[duct,1,1,1,none],[duct,1,1,1,none],[bedroom1,3,1,_,none],[bathroom,3,1,_,bedroom1],[kitchen,3,1,_,none],[dressingroom,3,1,_,bedroom1],[hallway,3,_,1,none],[sunroom,3,1,_,none],[diningroom,1,1,1,none]]]]], R).
 
 disjoint2([rect{x:2,y:1,w:2,h:3},rect{x:4,y:3,w:4,h:3},rect{x:9,w:2,y:4,h:3}])
 

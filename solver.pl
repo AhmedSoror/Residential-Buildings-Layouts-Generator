@@ -268,8 +268,16 @@ solve(F,A,R):-
     % non overlapping
     disjoint2(Rects),
     append(VarsX, VarsY, Vars),
-    labeling([ffc, max(TotalUsedArea)], Vars),
+    labeling([ffc,max(TotalUsedArea)], Vars),
     statistics(runtime, [Stop|_]),
     Runtime is Stop - Start,
     print("Runtime"+Runtime).
+
+
+% ff,up,bisect  2797
+% ffc,up,bisect 3364
+% ff,down,enum 3773
+% ffc,down,step 3761
+% ff, down, bisect 3549
+% ffc,down,bisect 3987
     
