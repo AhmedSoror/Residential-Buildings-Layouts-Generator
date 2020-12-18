@@ -7,7 +7,7 @@
 %   -(x, y) represents top left corner of the floor || room || ... etc
 % -----------------------------------------------------------
 
-%%% floorwidth, floorlength, [n,e,w,s] (open-area..etc), app count
+%%% floorwidth, floorlength, [n,w,s,e] (open-area..etc), app count     0(closed),1(open),2(landscape)
 %%% 1 apartment type: [#,[#,[[type,minarea,w,h,assigned]]]]
 %  Room = [ [type,minarea,w,h,assigned] , [X, W, Y, H]  ]
 %%% soft cons leave for now
@@ -46,17 +46,18 @@ getAppartments([H|T],R):-
 
 % -------------------
 
-getRects([],[], [], []).
-getRects([[_|Apartment1]|T], R, VarsX, VarsY):-
-    getRectRooms(Apartment1, R1, VarsX1, VarsY1),
-    getRects(T, R2, VarsX2, VarsY2),
+getRects([],[], [], [], 0).
+getRects([[_|Apartment1]|T], R, VarsX, VarsY, UsedFloorArea):-
+    getRectRooms(Apartment1, R1, VarsX1, VarsY1, Apartment1Area),
+    getRects(T, R2, VarsX2, VarsY2, UsedFloorArea2),
     append(R1, R2, R),
     append(VarsX1, VarsX2, VarsX),
-    append(VarsY1, VarsY2, VarsY).
+    append(VarsY1, VarsY2, VarsY),
+    UsedFloorArea #= Apartment1Area+UsedFloorArea2.
 
 
-getRectRooms([],[], [], []).
-getRectRooms([Room1|T],R, VarsX, VarsY):-
+getRectRooms([],[], [], [], 0).
+getRectRooms([Room1|T],R, VarsX, VarsY, TotalApartmentArea):-
     Room1=[[_,MinArea,W1,H1,_] ,[X1, W1, Y1, H1|_]],
     R1 = rect(X1, W1, Y1, H1),
     X2 #= X1+W1,
@@ -67,11 +68,12 @@ getRectRooms([Room1|T],R, VarsX, VarsY):-
     Area #>= MinArea,
     CoordinatesX=[X1, X2],
     CoordinatesY=[Y1, Y2],
-    getRectRooms(T,R2, VarsX2, VarsY2),
+    getRectRooms(T,R2, VarsX2, VarsY2, TotalApartmentArea2),
 
     append(CoordinatesX, VarsX2, VarsX),
     append(CoordinatesY, VarsY2, VarsY),    
-    append([R1],R2,R).
+    append([R1],R2,R),
+    TotalApartmentArea #= Area+TotalApartmentArea2.
 % ---------------------------------- Disjoint / Adj ----------------------------------
 % check if two rooms are adjacent but not overlapping
 adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
@@ -92,12 +94,102 @@ adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
     Y2#=< Y,
     Y#=< Y2+H2.
 
+%----------------------------------- sunRoomConstraint(Sides,R),-----------------------------
+sunRoomConstraintHelper([FloorWidth,FloorHeight,[North,West,South,East]],[_,[X,W,Y,H]]):-
+    X2 #= X+W,
+    Y2 #= Y+H,
+    (X#=0 #/\ West#>0) #\/ (Y#=0 #/\ North#>0) #\/ (X2#=FloorWidth #/\ East#>0) #\/ (Y2#=FloorHeight #/\ South#>0).
+
+diningRoomConstraintHelper(DiningRoom,Kitchens):-
+    belongsTo(Kitchen,Kitchens),
+    adjacent(DiningRoom,Kitchen).
+
+bathkitchenRoomConstraintHelper(H,Ducts):-          %H is either kitchen or bathroom
+    belongsTo(Duct,Ducts),
+    adjacent(H,Duct).
+    
+
+roomConstraint(_,[],_).
 
 
-% ---------------------------------- Apartment Constraints ----------------------------------
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[diningroom|_],_],
+    getKitchens(Appartment,[],Kitchens),
+    diningRoomConstraintHelper(H,Kitchens),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[bathroom,_,_,_,Assigned],_],
+    Assigned = none,
+    getDucts(Appartment,[],Ducts),
+    bathkitchenRoomConstraintHelper(H,Ducts),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[bathroom,_,_,_,Assigned],_],
+    Assigned \= none,
+    getAssigned(Assigned,Appartment,[],[AssignedRoom]),
+    adjacent(H,AssignedRoom),
+    % check for ducts
+    getDucts(Appartment,[],Ducts),
+    bathkitchenRoomConstraintHelper(H,Ducts),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[kitchen|_],_],
+    getDucts(Appartment,[],Ducts),
+    bathkitchenRoomConstraintHelper(H,Ducts),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[sunroom|_],_],
+    sunRoomConstraintHelper(Floor,H),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H=[[_,_,_,_,Assigned],_],
+    Assigned \= none,
+    getAssigned(Assigned,Appartment,[],[AssignedRoom]),
+    adjacent(H,AssignedRoom),
+    roomConstraint(Floor,T,Appartment).
+
+roomConstraint(Floor,[H|T],Appartment):-
+    H\=[[sunroom|_],_],
+    roomConstraint(Floor,T,Appartment).
+
+
+% ---------------------------------- Appartment Constraints ----------------------------------
 % getHallway(Ap,Hallway):-
 %     Hallway = [[hallway|_],_],
 %     belongsTo(Hallway, Ap).
+
+getAssigned(_,[],R,R).
+getAssigned(Assigned,[H|T],Acc,R):-
+    H=[[Assigned|_],_],
+    append(Acc,[H],Acc1),
+    getAssigned(Assigned,[],Acc1,R).
+getAssigned(Assigned,[H|T],Acc,R):-
+    H\=[[Assigned|_],_],
+    getAssigned(Assigned,T,Acc,R).
+
+getKitchens([],R,R).
+getKitchens([H|T],Acc,R):-
+    H=[[kitchen|_],_],
+    append(Acc,[H],Acc1),
+    getKitchens(T,Acc1,R).
+getKitchens([H|T],Acc,R):-
+    H\=[[kitchen|_],_],
+    getKitchens(T,Acc,R).
+    
+getDucts([],R,R).
+getDucts([H|T],Acc,R):-
+    H=[[duct|_],_],
+    append(Acc,[H],Acc1),
+    getDucts(T,Acc1,R).
+getDucts([H|T],Acc,R):-
+    H\=[[duct|_],_],
+    getDucts(T,Acc,R).
+
 
 getHallways([],R,R).
 getHallways([H|T],Acc,R):-
@@ -113,11 +205,13 @@ getHallways([H|T],Acc,R):-
 %  input: apartment => [rooms]
 consistentRooms([HallwaysCount|A]):-
     HallwaysCount#>1,
-    getHallways(A,[],Hallways),
-    consistentRoomsHelper(HallwaysCount,A, Hallways).
+    delete(A,[[duct|_],_],AWithoutDucts),
+    getHallways(AWithoutDucts,[],Hallways),
+    consistentRoomsHelper(HallwaysCount,AWithoutDucts, Hallways).
 
 consistentRooms([1|A]):-
-    delete(A, [[hallway|_],_], AwithoutHallways),
+    delete(A,[[duct|_],_],AWithoutDucts),
+    delete(AWithoutDucts, [[hallway|_],_], AwithoutHallways),
     getHallways(A,[],Hallways),
     consistentRoomsHelper(1,AwithoutHallways, Hallways).
 
@@ -125,13 +219,9 @@ consistentRooms([1|A]):-
 consistentRoomsHelper(_,[], _).
 
 consistentRoomsHelper(HallwaysCount,[H|T], L):-
-    % check if every room has adj 
     % check if there is a room adj to this one
     belongsTo(Hallway,L),
-    print(Hallway),nl,
-    print(H),nl,
     adjacent(H, Hallway),
-    % print("COMAPRING"+ H +"  "+ Hallway +" ===>"+F),nl,
     consistentRoomsHelper(HallwaysCount,T, L).
     
 hasAdj(R, [H|_]):-
@@ -146,10 +236,11 @@ belongsTo(R, [_|T]):-
 
 % ---------------------------------- Floor Constraints ----------------------------------
 % each apartment contains rooms belonging to the apartment
-consistentApartments([]).
-consistentApartments([H|T]):-
+consistentApartments(_,[]).
+consistentApartments(Floor,[H|T]):-
     consistentRooms(H),
-    consistentApartments(T).
+    roomConstraint(Floor,H,H),
+    consistentApartments(Floor,T).
 
 % apartments don't overlap 
 
@@ -159,24 +250,34 @@ consistentApartments([H|T]):-
 % (x, y) are cartesian coordinates where x is the the horizontal axis, y is the vertical one. (0,0) represents the top left corner of the floor
 solve(F,A,R):-
     statistics(runtime, [Start|_]),
-    F=[Width,Height,[North,East,South,West]],
+    F=[Width,Height,Sides],
     % A=[[2,[5,[R1,R2,R3]]]],
     %length(R, NUM_AP),
 
     getAppartments(A,R),
-    % print(R),
-    getRects(R, Rects, VarsX, VarsY),
+    getRects(R, Rects, VarsX, VarsY, TotalUsedArea),
     % constraints: 
+    %SunRoooms
+    % sunRoomConstraint(F,R),
+
     % domain
     VarsX ins 0.. Width,
     VarsY ins 0.. Height,
     % consistent Apartments where rooms in the same apartment are adjacent
-    consistentApartments(R),
+    consistentApartments(F,R),
     % non overlapping
     disjoint2(Rects),
     append(VarsX, VarsY, Vars),
-    labeling([], Vars),
+    labeling([ffc,max(TotalUsedArea)], Vars),
     statistics(runtime, [Stop|_]),
     Runtime is Stop - Start,
     print("Runtime"+Runtime).
+
+
+% ff,up,bisect  2797
+% ffc,up,bisect 3364
+% ff,down,enum 3773
+% ffc,down,step 3761
+% ff, down, bisect 3549
+% ffc,down,bisect 3987
     

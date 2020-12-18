@@ -29,4 +29,14 @@ getHallway([H|T],Acc,R):-
 getHallway([H|T],Acc,R):-
     H\=[[hallway|_],_],
     getHallway(T,Acc,R).
+
+
+deletem7md([],_,[]).
+deletem7md([H|T],A,R):-
+    H=A,R=[].
+   % deletem7md(T,A,R).
+deletem7md([H|T],A,R):-
+    H\=A,
+    deletem7md(T,A,R1),
+    R=[H|R1].
     
