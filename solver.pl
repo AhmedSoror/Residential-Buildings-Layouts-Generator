@@ -225,6 +225,7 @@ roomConstraint(Floor,[H|T],Appartment):-
     H\=[[dressingroom,_,_,_,_],_],
     H\=[[kitchen|_],_],
     H\=[[sunroom|_],_],
+    (H=[[_,_,_,_,none],_];H=1),
     roomConstraint(Floor,T,Appartment).
  
     
@@ -286,7 +287,7 @@ solve(F,A,R):-
     disjoint2(Rects),
    
     append(VarsX, VarsY, Vars),
-    labeling([ffc,max(TotalUsedArea)], Vars),
+    labeling([ffc,up,bisect,max(TotalUsedArea)], Vars),
    
     statistics(runtime, [Stop|_]),
     Runtime is Stop - Start,
