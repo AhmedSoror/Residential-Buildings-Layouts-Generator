@@ -165,18 +165,37 @@ adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
 
 % ---------- Soft constraints
 % daylightConstraintHelper(Floor info, Room, Reward)
-daylightConstraintHelper([FloorWidth,FloorHeight,[North,West,South,East]],[_,[X,W,Y,H]], Reward):-
-    X2 #= X+W,
-    Y2 #= Y+H,
-    (X#=0 #/\ West#>0) #\/ (Y#=0 #/\ North#>0) #\/ (X2#=FloorWidth #/\ East#>0) #\/ (Y2#=FloorHeight #/\ South#>0),
+daylightConstraintHelper(Floor,Room, Reward):-
+    % [FloorWidth,FloorHeight,[North,West,South,East]],[_,[X,W,Y,H]], Reward
+    % X2 #= X+W,
+    % Y2 #= Y+H,
+    % (X#=0 #/\ West#>0) #\/ (Y#=0 #/\ North#>0) #\/ (X2#=FloorWidth #/\ East#>0) #\/ (Y2#=FloorHeight #/\ South#>0),
+    Room = [[duct|_],_],
+    sunRoomConstraintHelper(Floor,Room),
+    Reward #=0.
+
+daylightConstraintHelper(Floor,Room, Reward):-
+    Room = [[hallway|_],_],
+    sunRoomConstraintHelper(Floor,Room),
+    Reward #=0.
+
+daylightConstraintHelper(Floor,Room, Reward):-
+    Room \= [[hallway|_],_],
+    Room \= [[duct|_],_],
+    sunRoomConstraintHelper(Floor,Room),
     Reward #=5.
 
-daylightConstraintHelper([FloorWidth,FloorHeight,[North,West,South,East]],[_,[X,W,Y,H]], Reward):-
-    X2 #= X+W,
-    Y2 #= Y+H,
-    % negate previous condition by pushing negation
-    (X#\=0 #\/ West#=0) #/\ (Y#\=0 #\/ North#=0) #/\ (X2#\=FloorWidth #\/ East#=0) #/\ (Y2#\=FloorHeight #\/ South#=0),
-    Reward #= 0.
+daylightConstraintHelper(Floor,Room, Reward):-
+    \+sunRoomConstraintHelper(Floor,Room),
+    Reward #=0.
+
+% daylightConstraintHelper(Floor,Room, Reward):-
+%     % X2 #= X+W,
+%     % Y2 #= Y+H,
+%     % negate previous condition by pushing negation
+%     % (X#\=0 #\/ West#=0) #/\ (Y#\=0 #\/ North#=0) #/\ (X2#\=FloorWidth #\/ East#=0) #/\ (Y2#\=FloorHeight #\/ South#=0),
+%     sunRoomConstraintHelper(Floor,Room),
+%     Reward #=5.
 
 
 % -------- sunRoomConstraint(Floor,R)
@@ -264,8 +283,9 @@ daylightConstraint(Floor,[Room|RoomsRest], Reward):-
     daylightConstraint(Floor,RoomsRest, Reward2),
     Reward#= Reward1+Reward2.
 
-softContraints(Floor, Apartment, TotalReward):-
-    daylightConstraint(Floor, H, DayLightReward),
+softContraints(Floor, [1|Apartment], TotalReward):-
+    % print(Apartment),nl,
+    daylightConstraint(Floor, Apartment, DayLightReward),
     TotalReward #= DayLightReward.
 
 % -------------------
@@ -305,7 +325,7 @@ consistentApartments(Floor,[H|T],Corridors, SoftConstraintsReward):-
     %making sure that each ap is adjacent to a corridor
     floorConstraint(H,Corridors),
     % apply soft constraints to each apartment
-    softContraints(Floor, Apartment, Reward1),
+    softContraints(Floor, H, Reward1),
 
     consistentApartments(Floor,T,Corridors, Reward2),
 
@@ -406,18 +426,17 @@ solve(F,A,CorridorsCount,OptionalConstraints,R):-
     CorridorsY ins 0..Height,
     VarsX ins 0.. Width,
     VarsY ins 0.. Height,
-    
     % apply constraints on the floor apartments
     append(Rects,CorridorRects,FloorRects),
     % non overlapping
     disjoint2(FloorRects),
     consistentApartments(F,R,Corridors, SoftConstraintsReward),
     optionalConstraints(F,R,CorridorsTmp,Stairs,Min,Max,OptionalConstraints),
-   
+    
     append(VarsX, VarsY, Vars1),
     append(CorridorsX,CorridorsY,Vars2),
     append(Vars1,Vars2,Vars),
-    labeling([ffc,up,bisect,max(TotalUsedArea, SoftConstraintsReward)], Vs),
+    labeling([ffc,up,bisect,max(TotalUsedArea),max(SoftConstraintsReward)], Vs),
     labeling([ffc],Vars2),
     statistics(runtime, [Stop|_]),
     Runtime is Stop - Start,
