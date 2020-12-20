@@ -1,4 +1,4 @@
-:-use_module(library(clpfd)).
+:- use_module(library(clpfd)).
 :- use_module(library(clpr)).
 
 % -----------------------------------------------------------
@@ -163,6 +163,22 @@ adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
     Y2#=< Y,
     Y#=< Y2+H2.
 
+% ---------- Soft constraints
+% daylightConstraintHelper(Floor info, Room, Reward)
+daylightConstraintHelper([FloorWidth,FloorHeight,[North,West,South,East]],[_,[X,W,Y,H]], Reward):-
+    X2 #= X+W,
+    Y2 #= Y+H,
+    (X#=0 #/\ West#>0) #\/ (Y#=0 #/\ North#>0) #\/ (X2#=FloorWidth #/\ East#>0) #\/ (Y2#=FloorHeight #/\ South#>0),
+    Reward #=5.
+
+daylightConstraintHelper([FloorWidth,FloorHeight,[North,West,South,East]],[_,[X,W,Y,H]], Reward):-
+    X2 #= X+W,
+    Y2 #= Y+H,
+    % negate previous condition by pushing negation
+    (X#\=0 #\/ West#=0) #/\ (Y#\=0 #\/ North#=0) #/\ (X2#\=FloorWidth #\/ East#=0) #/\ (Y2#\=FloorHeight #\/ South#=0),
+    Reward #= 0.
+
+
 % -------- sunRoomConstraint(Floor,R)
 sunRoomConstraintHelper([FloorWidth,FloorHeight,[North,West,South,East]],[_,[X,W,Y,H]]):-
     X2 #= X+W,
@@ -241,8 +257,17 @@ roomConstraint(Floor,[H|T],Appartment):-
     H\=[[sunroom|_],_],
     (H=[[_,_,_,_,none],_];H=1),
     roomConstraint(Floor,T,Appartment).
- 
-    
+
+daylightConstraint(_,[],0).
+daylightConstraint(Floor,[Room|RoomsRest], Reward):-
+    daylightConstraintHelper(Floor,Room, Reward1),
+    daylightConstraint(Floor,RoomsRest, Reward2),
+    Reward#= Reward1+Reward2.
+
+softContraints(Floor, Apartment, TotalReward):-
+    daylightConstraint(Floor, H, DayLightReward),
+    TotalReward #= DayLightReward.
+
 % -------------------
 % checks that every room is adjacent to a hallway in the apartment 
 consistentRooms([HallwaysCount|A]):-
@@ -273,14 +298,18 @@ floorConstraint(Ap,Corridors):-
     adjacent(Hallway,Corridor).
 % ---------------------------------- Floor Constraints ----------------------------------
 % each apartment contains rooms belonging to the apartment
-consistentApartments(_,[],_).
-consistentApartments(Floor,[H|T],Corridors):-
+consistentApartments(_,[],_,0).
+consistentApartments(Floor,[H|T],Corridors, SoftConstraintsReward):-
     consistentRooms(H),
     roomConstraint(Floor,H,H),
     %making sure that each ap is adjacent to a corridor
     floorConstraint(H,Corridors),
-    consistentApartments(Floor,T,Corridors).
+    % apply soft constraints to each apartment
+    softContraints(Floor, Apartment, Reward1),
 
+    consistentApartments(Floor,T,Corridors, Reward2),
+
+    SoftConstraintsReward#= Reward1+Reward2.
 
 % ------------------------------------- oPTIONAL ----------------------------------------
 optionalConstraints(Floor,A,Corridors,Stairs,Min,Max,[LandScape,EqualDistanceToElev,Symmetry,GoldenRatio]):-
@@ -382,13 +411,13 @@ solve(F,A,CorridorsCount,OptionalConstraints,R):-
     append(Rects,CorridorRects,FloorRects),
     % non overlapping
     disjoint2(FloorRects),
-    consistentApartments(F,R,Corridors),
+    consistentApartments(F,R,Corridors, SoftConstraintsReward),
     optionalConstraints(F,R,CorridorsTmp,Stairs,Min,Max,OptionalConstraints),
    
     append(VarsX, VarsY, Vars1),
     append(CorridorsX,CorridorsY,Vars2),
     append(Vars1,Vars2,Vars),
-    labeling([ffc,up,bisect,max(TotalUsedArea)], Vs),
+    labeling([ffc,up,bisect,max(TotalUsedArea, SoftConstraintsReward)], Vs),
     labeling([ffc],Vars2),
     statistics(runtime, [Stop|_]),
     Runtime is Stop - Start,
