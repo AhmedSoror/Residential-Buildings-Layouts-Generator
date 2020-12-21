@@ -164,39 +164,20 @@ adjacent([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]]):-
     Y#=< Y2+H2.
 
 % ---------- Soft constraints
-% daylightConstraintHelper(Floor info, Room, Reward)
+% daylightConstraintHelper(Floor info, Room, Cost)
 daylightConstraintHelper(Floor,Room, Cost):-
     Room = [[duct|_],_],
-    % sunRoomConstraintHelper(Floor,Room),
-    print("Hd"),nl,
     Cost #=0.
 
 daylightConstraintHelper(Floor,Room, Cost):-
     Room = [[hallway|_],_],
-    print("Hh"),nl,
-    % sunRoomConstraintHelper(Floor,Room),
     Cost #=0.
 
-% daylightConstraintHelper(Floor,Room, 0):-
-%     % Room \= [[hallway|_],_],
-%     % Room \= [[duct|_],_],
-%     sunRoomConstraintHelper(Floor,Room),
-%     print("H0"),nl.
-    % Cost #=0.
 
 daylightConstraintHelper(Floor,Room, Cost):-
     Room \= [[hallway|_],_],
     Room \= [[duct|_],_],
-    sunRoomConstraintHelperCost(Floor,Room,Cost),
-    print("H5"),nl.
-    % Cost #=5.
-
-% daylightConstraintHelper(Floor,Room, Cost):-
-%     % Room \= [[hallway|_],_],
-%     % Room \= [[duct|_],_],
-%     \+sunRoomConstraintHelper(Floor,Room),
-%     print("H5"),nl,
-%     Cost #=5.
+    sunRoomConstraintHelperCost(Floor,Room,Cost).
 
 isBedroom([[Type|_],_]):-
     sub_string(Type,0,7,_,bedroom).
@@ -205,7 +186,7 @@ notBedroom(X):-
 getBedrooms(A,ABedrooms):-
     exclude(notBedroom, A, ABedrooms).
 
-bedroomsDistanceHelper([],_,0).
+bedroomsDistanceHelper(_,[],0).
 bedroomsDistanceHelper(X,[Room|Rest],Cost):-
     distance(X,Room,Distance),
     bedroomsDistanceHelper(X,Rest,Cost1),
@@ -309,18 +290,15 @@ roomConstraint(Floor,[H|T],Appartment):-
 
 daylightConstraint(_,[],0).
 daylightConstraint(Floor,[Room|RoomsRest], Cost):-
-    print([Room|RoomsRest]),nl,
     daylightConstraintHelper(Floor,Room, Cost1),
-    print(Cost1),nl,
     daylightConstraint(Floor,RoomsRest, Cost2),
     Cost#= Cost1+Cost2.
 
 softContraints(Floor, [1|Apartment], DayLightCost,BedroomsCloseCost):-
-    % print(Apartment),nl,
     daylightConstraint(Floor, Apartment, DayLightCost),
     % DayLightCost#=10,
-    BedroomsCloseCost#=0.
-    % bedroomsAsClose(Apartment, BedroomsCloseCost).
+    % BedroomsCloseCost#=0.
+    bedroomsAsClose(Apartment, BedroomsCloseCost).
     
 % -------------------
 % checks that every room is adjacent to a hallway in the apartment 
@@ -389,7 +367,7 @@ distance([_,[X1,W1,Y1,H1]],[_,[X2,W2,Y2,H2]],Distance):-
     Y1new#=Y1+(H1 div 2),
     X2new#=X2+(W2 div 2),
     Y2new#=Y2+(H2 div 2),
-    Distance= (X1new-X2new)^2+(Y1new-Y2new)^2.
+    Distance#= (X1new-X2new)^2+(Y1new-Y2new)^2.
 
 equalDistancesToElev(_,[],_,_,_,_).
 equalDistancesToElev(0,_,_,_,_,_).
@@ -448,8 +426,6 @@ solve(F,A,CorridorsCount,OptionalConstraints,R):-
     adjacent(Corridor,Stairs),
     Corridors=[CorridorsCount,Stairs|CorridorsTmp],
     getAppartments(A,R),
-    % print(R),nl,nl,
-    % print([Corridors]),
     getRects([Corridors],CorridorRects,CorridorsX,CorridorsY,_,_),
     getRects(R, Rects, VarsX, VarsY, TotalUsedArea,Vs),
     % constraints: 
