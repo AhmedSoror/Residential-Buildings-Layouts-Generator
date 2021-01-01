@@ -6,6 +6,8 @@ solve([7,9,[0,0,0,1]],[[1,[5,[[duct,1,1,1,none],[duct,1,1,1,none],[bedroom1,3,1,
 
 solve([7,9,[0,0,0,1]],[[1,[5,[[duct,1,1,1,none],[duct,1,1,1,none],[bedroom1,3,1,_,none],[bathroom,3,1,_,bedroom1],[kitchen,3,1,_,none],[dressingroom,3,1,_,bedroom1],[hallway,3,_,1,none],[sunroom,3,1,_,none],[diningroom,1,1,1,none]]]]], R).
 
+solve([4,4,[0,0,0,1]],[[1,[5,[[duct,1,1,1,none],[bedroom1,3,1,_,none],[bathroom,3,1,_,bedroom1],[kitchen,3,1,_,none],[dressingroom,3,1,_,bedroom1],[hallway,3,_,1,none]]]]],1,[0,0,0,0] R).
+
 disjoint2([rect{x:2,y:1,w:2,h:3},rect{x:4,y:3,w:4,h:3},rect{x:9,w:2,y:4,h:3}])
 
 adjacent([_,[0, 0, 2, 3]], [_,[0, 0, 2, 3]]).
